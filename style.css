@@ -127,3 +127,9 @@ html, body {
 #friendList .empty { color: var(--muted); justify-content: center; border: 0; }
 .card label input[type=checkbox] { margin-right: 6px; vertical-align: middle; }
 #boardList .ar { font-size: 13px; }
+
+/* same size and shape for every button inside the popups */
+.row button { height: 48px; padding: 0 16px; font-size: 16px; font-weight: 600; border-radius: 12px; }
+.addrow { margin-top: 0; align-items: stretch; }
+.addrow input { flex: 1; min-width: 0; height: 48px; }
+.addrow button { flex: none; min-width: 84px; }
