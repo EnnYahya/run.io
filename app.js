@@ -252,7 +252,6 @@
       });
       redrawAll();
       renderBoard();
-      if (!players[uid] && !askedProfile) { askedProfile = true; openProfile(true); }
     }, (err) => { console.error(err); toast(t('dbErr'), 0); });
 
     db.collection('territories').onSnapshot((snap) => {
@@ -282,6 +281,7 @@
       $('mdAuth').hidden = true;
       startListeners();
       startFriends();
+      ensureProfile(user);
     });
   }
 
@@ -358,18 +358,28 @@
   });
   $('auSignup').addEventListener('click', async () => {
     const f = readAuth(); if (!f || !configured) return;
-    askedProfile = true; // we create the profile ourselves
     try {
-      const cred = await auth.createUserWithEmailAndPassword(fakeMail(f.u), f.p);
-      const now = firebase.firestore.FieldValue.serverTimestamp();
-      const batch = db.batch();
-      batch.set(db.collection('usernames').doc(f.u.toLowerCase()), { uid: cred.user.uid });
-      batch.set(db.collection('players').doc(cred.user.uid), {
-        name: f.u, color: COLORS[Math.floor(Math.random() * COLORS.length)], points: 0, updatedAt: now
-      });
-      await batch.commit();
-    } catch (e) { askedProfile = false; authErr(e); }
+      await auth.createUserWithEmailAndPassword(fakeMail(f.u), f.p);
+    } catch (e) { authErr(e); }
   });
+
+  // Creates the player profile (and reserves the username) if it does not exist yet.
+  async function ensureProfile(user) {
+    try {
+      const ref = db.collection('players').doc(user.uid);
+      if ((await ref.get()).exists) return;
+      let name = (user.email || 'runner').split('@')[0].slice(0, 20);
+      if (name.length < 2) name += '_';
+      await ref.set({
+        name, color: COLORS[Math.floor(Math.random() * COLORS.length)], points: 0,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      db.collection('usernames').doc(name.toLowerCase()).set({ uid: user.uid }).catch(() => {});
+    } catch (e) {
+      console.error(e);
+      toast('Could not create your profile (' + (e.code || e.message) + '). Publish the new firestore.rules in Firebase.', 0);
+    }
+  }
 
   let unsubFriends = null;
   function startFriends() {
@@ -486,7 +496,7 @@
   function startRun() {
     if (!configured) { toast(t('notConfigured'), 0); return; }
     if (!uid) return;
-    if (!players[uid]) { openProfile(true); return; }
+    if (!players[uid]) { toast('Loading your profile, try again in a second.'); return; }
     resetRun();
     clearLive();
     run.active = true;
