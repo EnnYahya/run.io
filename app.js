@@ -169,6 +169,8 @@
   const territories = {};  // id  -> {id, uid, area, geom, bbox}
   const layers = {};       // id  -> leaflet layer
   let askedProfile = false;
+  const friends = new Set();
+  let friendsOnly = false;
 
   const colorOf = (u) => (players[u] && players[u].color) || '#888888';
   const nameOf = (u) => (players[u] && players[u].name) || '???';
@@ -178,6 +180,7 @@
   }
   function drawTerritory(tr) {
     removeLayer(tr.id);
+    if (friendsOnly && tr.uid !== uid && !friends.has(tr.uid)) return;
     const col = colorOf(tr.uid);
     const l = L.geoJSON(feat(tr.geom), {
       style: () => ({ color: col, weight: tr.uid === uid ? 3 : 1.5, fillColor: col, fillOpacity: 0.4 })
@@ -201,7 +204,8 @@
   function totals() {
     const m = {};
     Object.values(territories).forEach((tr) => { m[tr.uid] = (m[tr.uid] || 0) + tr.area; });
-    return Object.keys(m).map((u) => ({ uid: u, area: m[u] })).sort((a, b) => b.area - a.area);
+    return Object.keys(players).map((u) => ({ uid: u, area: m[u] || 0, points: players[u].points || 0 }))
+      .sort((a, b) => b.points - a.points || b.area - a.area);
   }
 
   function renderChip() {
@@ -231,7 +235,7 @@
       const dot = document.createElement('span'); dot.className = 'dot'; dot.style.background = colorOf(r.uid);
       const nm = document.createElement('span'); nm.className = 'nm';
       nm.textContent = nameOf(r.uid) + (r.uid === uid ? ' (' + t('you') + ')' : '');
-      const ar = document.createElement('span'); ar.className = 'ar'; ar.textContent = fmtArea(r.area);
+      const ar = document.createElement('span'); ar.className = 'ar'; ar.textContent = r.points.toLocaleString() + ' pts · ' + fmtArea(r.area);
       li.append(rank, dot, nm, ar);
       list.appendChild(li);
     };
@@ -271,14 +275,12 @@
     firebase.initializeApp(C.firebase);
     auth = firebase.auth();
     db = firebase.firestore();
-    auth.onAuthStateChanged(async (user) => {
-      if (!user) {
-        try { await auth.signInAnonymously(); }
-        catch (e) { console.error(e); toast(t('signInErr'), 0); }
-        return;
-      }
+    auth.onAuthStateChanged((user) => {
+      if (!user) { uid = null; $('mdAuth').hidden = false; return; }
       uid = user.uid;
+      $('mdAuth').hidden = true;
       startListeners();
+      startFriends();
     });
   }
 
@@ -317,7 +319,7 @@
     try {
       await db.collection('players').doc(uid).set({
         name, color: pickedColor, updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      }, { merge: true });
       $('mdProfile').hidden = true;
     } catch (e) { console.error(e); toast(t('saveErr')); }
   });
@@ -328,6 +330,94 @@
   /* ---------------------------------------------------------- */
   /*  Run tracking                                               */
   /* ---------------------------------------------------------- */
+
+  /* ---------------------------------------------------------- */
+  /*  Auth (username + password) and friends                     */
+  /* ---------------------------------------------------------- */
+  const fakeMail = (u) => u.toLowerCase() + '@terrirun.app';
+  function readAuth() {
+    const u = $('auUser').value.trim(), p = $('auPass').value;
+    if (!/^[A-Za-z0-9_]{3,20}$/.test(u)) { toast('Username: 3-20 letters, numbers or _'); return null; }
+    if (p.length < 6) { toast('Password: 6 characters minimum'); return null; }
+    return { u, p };
+  }
+  function authErr(e) {
+    const m = {
+      'auth/email-already-in-use': 'This username is already taken.',
+      'auth/invalid-credential': 'Wrong username or password.',
+      'auth/wrong-password': 'Wrong username or password.',
+      'auth/user-not-found': 'Wrong username or password.',
+      'auth/operation-not-allowed': 'Enable Email/Password sign-in in Firebase Authentication.'
+    };
+    toast(m[e.code] || e.message);
+  }
+  $('auLogin').addEventListener('click', async () => {
+    const f = readAuth(); if (!f || !configured) return;
+    try { await auth.signInWithEmailAndPassword(fakeMail(f.u), f.p); } catch (e) { authErr(e); }
+  });
+  $('auSignup').addEventListener('click', async () => {
+    const f = readAuth(); if (!f || !configured) return;
+    askedProfile = true; // we create the profile ourselves
+    try {
+      const cred = await auth.createUserWithEmailAndPassword(fakeMail(f.u), f.p);
+      const now = firebase.firestore.FieldValue.serverTimestamp();
+      const batch = db.batch();
+      batch.set(db.collection('usernames').doc(f.u.toLowerCase()), { uid: cred.user.uid });
+      batch.set(db.collection('players').doc(cred.user.uid), {
+        name: f.u, color: COLORS[Math.floor(Math.random() * COLORS.length)], points: 0, updatedAt: now
+      });
+      await batch.commit();
+    } catch (e) { askedProfile = false; authErr(e); }
+  });
+
+  let unsubFriends = null;
+  function startFriends() {
+    if (unsubFriends) unsubFriends();
+    unsubFriends = db.collection('friends').where('from', '==', uid).onSnapshot((snap) => {
+      friends.clear();
+      snap.forEach((d) => friends.add(d.data().to));
+      renderFriends();
+      redrawAll();
+    }, (err) => { console.error(err); toast(t('dbErr'), 0); });
+  }
+  function renderFriends() {
+    const ul = $('friendList');
+    ul.textContent = '';
+    if (!friends.size) {
+      const li = document.createElement('li');
+      li.className = 'empty'; li.textContent = 'No friends yet. Add one by username.';
+      ul.appendChild(li); return;
+    }
+    friends.forEach((f) => {
+      const li = document.createElement('li');
+      const dot = document.createElement('span'); dot.className = 'dot'; dot.style.background = colorOf(f);
+      const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = nameOf(f);
+      const pt = document.createElement('span'); pt.className = 'ar';
+      pt.textContent = ((players[f] && players[f].points) || 0) + ' pts';
+      const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'x'; rm.textContent = '✕';
+      rm.addEventListener('click', () => db.collection('friends').doc(uid + '_' + f).delete());
+      li.append(dot, nm, pt, rm);
+      ul.appendChild(li);
+    });
+  }
+  $('frAdd').addEventListener('click', async () => {
+    const name = $('frUser').value.trim().toLowerCase();
+    if (!name) return;
+    try {
+      const d = await db.collection('usernames').doc(name).get();
+      if (!d.exists) { toast('No player with this username.'); return; }
+      const fid = d.data().uid;
+      if (fid === uid) { toast("That's you!"); return; }
+      await db.collection('friends').doc(uid + '_' + fid).set({ from: uid, to: fid });
+      $('frUser').value = '';
+      toast('Friend added.');
+    } catch (e) { console.error(e); toast(t('saveErr')); }
+  });
+  $('frOnly').addEventListener('change', (e) => { friendsOnly = e.target.checked; redrawAll(); });
+  $('btnFriends').addEventListener('click', () => { renderFriends(); $('mdFriends').hidden = false; });
+  $('frClose').addEventListener('click', () => { $('mdFriends').hidden = true; });
+  $('frLogout').addEventListener('click', () => { auth.signOut().then(() => location.reload()); });
+
   const run = {};
   function resetRun() {
     run.active = false;
@@ -576,6 +666,11 @@
 
     if (ops > 450) { toast(t('tooBig', fmtArea(area), fmtArea(R.maxAreaM2))); return; }
 
+    // Points: 1 per 100 m2 claimed + 1 per 50 m2 taken from other players
+    const gain = Math.max(1, Math.round(area / 100 + stolen / 50));
+    batch.update(db.collection('players').doc(uid), {
+      points: firebase.firestore.FieldValue.increment(gain), updatedAt: now
+    });
     const newRef = db.collection('territories').doc();
     batch.set(newRef, {
       uid,
@@ -585,7 +680,7 @@
 
     try {
       await batch.commit();
-      let msg = t('claimed', fmtArea(area));
+      let msg = t('claimed', fmtArea(area)) + ' +' + gain + ' pts.';
       if (stolen >= 1) msg += t('stole', fmtArea(stolen));
       toast(msg, 8000);
     } catch (e) {

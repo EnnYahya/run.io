@@ -28,9 +28,9 @@ This is a static website (no server to run). It uses:
 
 > The API key in this file is meant to be public. What protects your data are the rules in step 3.
 
-### 2. Turn on anonymous sign-in
-**Build → Authentication → Get started → Sign-in method → Anonymous → Enable → Save.**
-Players get an invisible account automatically, then pick a name and color.
+### 2. Turn on username + password sign-in
+**Build → Authentication → Get started → Sign-in method → Email/Password → Enable → Save.**
+Players sign up with a username and a password (the app turns the username into a hidden email like `name@terrirun.app`). Usernames are unique.
 
 ### 3. Create the database and add the rules
 1. **Build → Firestore Database → Create database.** Choose a European location (for example `eur3`) and **Production mode**.
@@ -74,3 +74,11 @@ Runs faster than `maxSpeedKmh` (default 25 km/h) are cancelled, so bikes and car
 
 ## About Google Maps
 You asked for a Google Maps map. Google Maps needs an API key with a billing card attached and has rules against reusing its tiles outside its own library. OpenStreetMap does the same job for free, so I used that. If you really want Google Maps later, only the map part of `app.js` needs to change.
+
+## New in this version
+- **Accounts:** username + password sign-up / log-in (log out is in the 👥 menu).
+- **Friends:** 👥 → add a friend by username. Tick *Show only my territory and my friends'* to see only your friends' zones on the map.
+- **Points:** each claim gives 1 point per 100 m² claimed, plus 1 point per 50 m² taken from other players.
+- **Leaderboard:** 🏆 now ranks players by points (area shown next to it).
+- **Re-publish the rules:** copy the new `firestore.rules` into Firebase → Firestore → Rules → Publish.
+- Chat and guilds are not built yet.

@@ -17,6 +17,7 @@
       <span id="chipDot"></span><span id="chipName">…</span>
     </button>
     <button id="btnBoard" class="icon-btn" type="button" aria-label="Leaderboard">🏆</button>
+    <button id="btnFriends" class="icon-btn" type="button" aria-label="Friends">👥</button>
   </header>
 
   <div id="toast" hidden></div>
@@ -32,6 +33,38 @@
     <button id="btnMain" class="main" type="button"></button>
     <label id="simRow" hidden><input type="checkbox" id="simBox"> <span data-i18n="sim"></span></label>
   </section>
+
+  <!-- Login / sign up -->
+  <div id="mdAuth" class="modal" hidden>
+    <div class="card">
+      <h2>TerriRun</h2>
+      <label for="auUser">Username</label>
+      <input id="auUser" maxlength="20" autocomplete="username" autocapitalize="off">
+      <label for="auPass">Password</label>
+      <input id="auPass" type="password" autocomplete="current-password">
+      <div class="row">
+        <button id="auSignup" class="ghost" type="button">Sign up</button>
+        <button id="auLogin" class="primary" type="button">Log in</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Friends -->
+  <div id="mdFriends" class="modal" hidden>
+    <div class="card">
+      <h2>Friends</h2>
+      <div class="row" style="margin-top:0">
+        <input id="frUser" placeholder="Friend's username" autocapitalize="off">
+        <button id="frAdd" class="primary" type="button" style="flex:none">Add</button>
+      </div>
+      <ol id="friendList"></ol>
+      <label><input type="checkbox" id="frOnly" style="width:auto"> Show only my territory and my friends'</label>
+      <div class="row">
+        <button id="frLogout" class="ghost" type="button">Log out</button>
+        <button id="frClose" class="primary" type="button">Close</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Profile -->
   <div id="mdProfile" class="modal" hidden>
