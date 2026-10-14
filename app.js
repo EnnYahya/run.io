@@ -367,6 +367,11 @@
   async function ensureProfile(user) {
     try {
       const ref = db.collection('players').doc(user.uid);
+      const un = (user.email || '').split('@')[0].toLowerCase();
+      if (un) {
+        const ud = db.collection('usernames').doc(un);
+        ud.get().then((s) => { if (!s.exists) ud.set({ uid: user.uid }).catch(() => {}); }).catch(() => {});
+      }
       if ((await ref.get()).exists) return;
       let name = (user.email || 'runner').split('@')[0].slice(0, 20);
       if (name.length < 2) name += '_';
@@ -415,14 +420,19 @@
     const name = $('frUser').value.trim().toLowerCase();
     if (!name) return;
     try {
+      let fid = null;
       const d = await db.collection('usernames').doc(name).get();
-      if (!d.exists) { toast('No player with this username.'); return; }
-      const fid = d.data().uid;
+      if (d.exists) fid = d.data().uid;
+      else {
+        const q = await db.collection('players').where('name', '==', $('frUser').value.trim()).limit(1).get();
+        if (!q.empty) fid = q.docs[0].id;
+      }
+      if (!fid) { toast('No player with this username.'); return; }
       if (fid === uid) { toast("That's you!"); return; }
       await db.collection('friends').doc(uid + '_' + fid).set({ from: uid, to: fid });
       $('frUser').value = '';
       toast('Friend added.');
-    } catch (e) { console.error(e); toast(t('saveErr')); }
+    } catch (e) { console.error(e); toast('Could not add friend (' + (e.code || e.message) + '). Publish the new firestore.rules in Firebase.', 0); }
   });
   $('frOnly').addEventListener('change', (e) => { friendsOnly = e.target.checked; redrawAll(); });
   $('btnFriends').addEventListener('click', () => { renderFriends(); $('mdFriends').hidden = false; });
