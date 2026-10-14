@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f1420">
+  <title>TerriRun</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="map"></div>
+
+  <header id="topbar">
+    <div id="brand">TerriRun</div>
+    <button id="btnPlayer" class="chip" type="button">
+      <span id="chipDot"></span><span id="chipName">…</span>
+    </button>
+    <button id="btnBoard" class="icon-btn" type="button" aria-label="Leaderboard">🏆</button>
+  </header>
+
+  <div id="toast" hidden></div>
+
+  <section id="panel">
+    <button id="btnLocate" class="icon-btn" type="button" aria-label="My position">📍</button>
+    <div id="stats">
+      <div><b id="stDist">0 m</b><span data-i18n="distance"></span></div>
+      <div><b id="stTime">0:00</b><span data-i18n="time"></span></div>
+      <div><b id="stStart">—</b><span data-i18n="toStart"></span></div>
+    </div>
+    <p id="hint"></p>
+    <button id="btnMain" class="main" type="button"></button>
+    <label id="simRow" hidden><input type="checkbox" id="simBox"> <span data-i18n="sim"></span></label>
+  </section>
+
+  <!-- Profile -->
+  <div id="mdProfile" class="modal" hidden>
+    <div class="card">
+      <h2 data-i18n="chooseName"></h2>
+      <label for="pfName" data-i18n="name"></label>
+      <input id="pfName" maxlength="20" autocomplete="off">
+      <label data-i18n="color"></label>
+      <div id="pfColors"></div>
+      <div class="row">
+        <button id="pfCancel" class="ghost" type="button" data-i18n="close"></button>
+        <button id="pfSave" class="primary" type="button" data-i18n="save"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaderboard -->
+  <div id="mdBoard" class="modal" hidden>
+    <div class="card">
+      <h2 data-i18n="leaderboard"></h2>
+      <ol id="boardList"></ol>
+      <div class="row">
+        <button id="bdClose" class="primary" type="button" data-i18n="close"></button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/turf.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

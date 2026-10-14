@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // One document per player: name + color. Only the owner can write it.
+    match /players/{uid} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['name', 'color', 'updatedAt'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2
+        && request.resource.data.name.size() <= 20
+        && request.resource.data.color is string
+        && request.resource.data.color.size() <= 9;
+      allow delete: if false;
+    }
+
+    // One document per claimed zone.
+    // Anyone signed in can shrink/delete a zone (that is how "taking" territory works).
+    match /territories/{id} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'geometry', 'area', 'createdAt', 'updatedAt'])
+        && request.resource.data.area is number
+        && request.resource.data.area >= 100
+        && request.resource.data.area <= 5000000
+        && request.resource.data.geometry is string
+        && request.resource.data.geometry.size() < 900000;
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['geometry', 'area', 'updatedAt'])
+        && request.resource.data.geometry.size() < 900000;
+      allow delete: if request.auth != null;
+    }
+  }
+}
