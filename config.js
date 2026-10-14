@@ -5,12 +5,12 @@
 // ============================================================
 window.APP_CONFIG = {
   firebase: {
-    apiKey: "PASTE_YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT.appspot.com",
-    messagingSenderId: "000000000000",
-    appId: "PASTE_YOUR_APP_ID"
+    apiKey: "AIzaSyCnNcDX9Lfd_2yZAUrHSVGK2kz_GT3Pvko",
+    authDomain: "runio-2d1fd.firebaseapp.com",
+    projectId: "runio-2d1fd",
+    storageBucket: "runio-2d1fd.firebasestorage.app",
+    messagingSenderId: "717334757158",
+    appId: "1:717334757158:web:af886dd5d4cf64f90a4be7"
   },
 
   // Where the map opens before the GPS finds you [latitude, longitude]
