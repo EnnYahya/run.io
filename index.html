@@ -18,6 +18,7 @@
     </button>
     <button id="btnBoard" class="icon-btn" type="button" aria-label="Leaderboard">🏆</button>
     <button id="btnFriends" class="icon-btn" type="button" aria-label="Friends">👥</button>
+    <button id="btnGuild" class="icon-btn" type="button" aria-label="Guild">🛡️</button>
   </header>
 
   <div id="toast" hidden></div>
@@ -62,6 +63,34 @@
       <div class="row">
         <button id="frClose" class="ghost" type="button">Close</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Guild -->
+  <div id="mdGuild" class="modal" hidden>
+    <div class="card">
+      <h2>Guild</h2>
+      <div id="gNone">
+        <div class="row addrow"><input id="gNew" placeholder="New guild name" maxlength="20"><button id="gCreate" class="primary" type="button">Create</button></div>
+        <div class="row addrow"><input id="gFind" placeholder="Join a guild by name" maxlength="20"><button id="gJoin" class="blue" type="button">Join</button></div>
+      </div>
+      <div id="gHas" hidden>
+        <h3 id="gName"></h3>
+        <ol id="gMembers" class="plist"></ol>
+        <div class="row"><button id="gChat" class="blue" type="button">💬 Guild chat</button></div>
+        <div class="row sep"><button id="gLeave" class="logout" type="button">Leave guild</button></div>
+      </div>
+      <div class="row"><button id="gClose" class="ghost" type="button">Close</button></div>
+    </div>
+  </div>
+
+  <!-- Chat -->
+  <div id="mdChat" class="modal" hidden>
+    <div class="card">
+      <h2 id="chTitle"></h2>
+      <div id="chList"></div>
+      <div class="row addrow"><input id="chText" placeholder="Message" maxlength="500" autocomplete="off"><button id="chSend" class="blue" type="button">Send</button></div>
+      <div class="row"><button id="chClose" class="ghost" type="button">Close</button></div>
     </div>
   </div>
 

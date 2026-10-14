@@ -170,6 +170,7 @@
   const layers = {};       // id  -> leaflet layer
   let askedProfile = false;
   const friends = new Set();
+  const guildMates = new Set();
   let friendsOnly = false;
 
   const colorOf = (u) => (players[u] && players[u].color) || '#888888';
@@ -180,7 +181,7 @@
   }
   function drawTerritory(tr) {
     removeLayer(tr.id);
-    if (friendsOnly && tr.uid !== uid && !friends.has(tr.uid)) return;
+    if (friendsOnly && tr.uid !== uid && !friends.has(tr.uid) && !guildMates.has(tr.uid)) return;
     const col = colorOf(tr.uid);
     const l = L.geoJSON(feat(tr.geom), {
       style: () => ({ color: col, weight: tr.uid === uid ? 3 : 1.5, fillColor: col, fillOpacity: 0.4 })
@@ -281,6 +282,7 @@
       $('mdAuth').hidden = true;
       startListeners();
       startFriends();
+      startGuild();
       ensureProfile(user);
     });
   }
@@ -412,7 +414,9 @@
       pt.textContent = ((players[f] && players[f].points) || 0) + ' pts';
       const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'x'; rm.textContent = '✕';
       rm.addEventListener('click', () => db.collection('friends').doc(uid + '_' + f).delete());
-      li.append(dot, nm, pt, rm);
+      const ch = document.createElement('button'); ch.type = 'button'; ch.className = 'x chat'; ch.textContent = '💬';
+      ch.addEventListener('click', () => openChat([uid, f].sort().join('_'), nameOf(f)));
+      li.append(dot, nm, pt, ch, rm);
       ul.appendChild(li);
     });
   }
@@ -438,6 +442,91 @@
   $('btnFriends').addEventListener('click', () => { renderFriends(); $('mdFriends').hidden = false; });
   $('frClose').addEventListener('click', () => { $('mdFriends').hidden = true; });
   $('frLogout').addEventListener('click', () => { auth.signOut().then(() => location.reload()); });
+
+  /* ---------------------------------------------------------- */
+  /*  Chat + guilds                                              */
+  /* ---------------------------------------------------------- */
+  let chatId = null, unsubChat = null, unsubGuild = null, myGuild = null;
+  const ts = () => firebase.firestore.FieldValue.serverTimestamp();
+  function openChat(id, title) {
+    chatId = id; $('chTitle').textContent = title; $('chList').textContent = ''; $('mdChat').hidden = false;
+    if (unsubChat) unsubChat();
+    unsubChat = db.collection('messages').where('chatId', '==', id).onSnapshot((snap) => {
+      const ms = (x) => (x.createdAt ? x.createdAt.toMillis() : Date.now());
+      const msgs = snap.docs.map((d) => d.data()).sort((p, q) => ms(p) - ms(q)).slice(-100);
+      const box = $('chList'); box.textContent = '';
+      msgs.forEach((m) => {
+        const d = document.createElement('div'); d.className = 'msg' + (m.from === uid ? ' me' : '');
+        if (m.from !== uid) { const n = document.createElement('b'); n.textContent = nameOf(m.from); d.appendChild(n); }
+        const p = document.createElement('span'); p.textContent = m.text; d.appendChild(p); box.appendChild(d);
+      });
+      box.scrollTop = box.scrollHeight;
+    }, (e) => { console.error(e); toast('Chat error (' + e.code + '). Publish the new firestore.rules.', 0); });
+  }
+  async function sendMsg() {
+    const text = $('chText').value.trim();
+    if (!text || !chatId) return;
+    $('chText').value = '';
+    try { await db.collection('messages').add({ chatId, from: uid, text: text.slice(0, 500), createdAt: ts() }); }
+    catch (e) { console.error(e); toast('Message not sent (' + e.code + ').'); }
+  }
+  $('chSend').addEventListener('click', sendMsg);
+  $('chText').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendMsg(); });
+  $('chClose').addEventListener('click', () => { $('mdChat').hidden = true; if (unsubChat) unsubChat(); unsubChat = null; });
+
+  function startGuild() {
+    if (unsubGuild) unsubGuild();
+    unsubGuild = db.collection('guilds').where('members', 'array-contains', uid).onSnapshot((snap) => {
+      myGuild = snap.empty ? null : Object.assign({ id: snap.docs[0].id }, snap.docs[0].data());
+      guildMates.clear();
+      if (myGuild) myGuild.members.forEach((m) => guildMates.add(m));
+      renderGuild(); redrawAll();
+    }, (e) => { console.error(e); toast('Guild error (' + e.code + '). Publish the new firestore.rules.', 0); });
+  }
+  function renderGuild() {
+    $('gNone').hidden = !!myGuild; $('gHas').hidden = !myGuild;
+    if (!myGuild) return;
+    const ul = $('gMembers'); ul.textContent = ''; let total = 0;
+    myGuild.members.forEach((m) => {
+      const pts = (players[m] && players[m].points) || 0; total += pts;
+      const li = document.createElement('li');
+      const dot = document.createElement('span'); dot.className = 'dot'; dot.style.background = colorOf(m);
+      const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = nameOf(m) + (m === myGuild.owner ? ' 👑' : '');
+      const ar = document.createElement('span'); ar.className = 'ar'; ar.textContent = pts + ' pts';
+      li.append(dot, nm, ar); ul.appendChild(li);
+    });
+    $('gName').textContent = myGuild.name + ' · ' + total + ' pts';
+  }
+  const guildId = (n) => n.toLowerCase().replace(/[^a-z0-9]/g, '');
+  $('gCreate').addEventListener('click', async () => {
+    const name = $('gNew').value.trim(), id = guildId(name);
+    if (name.length < 3 || name.length > 20 || id.length < 3) { toast('Guild name: 3-20 letters or numbers.'); return; }
+    try {
+      await db.collection('guilds').doc(id).set({ name, owner: uid, members: [uid], createdAt: ts() });
+      $('gNew').value = '';
+    } catch (e) { console.error(e); toast('Name taken or not allowed (' + e.code + ').'); }
+  });
+  $('gJoin').addEventListener('click', async () => {
+    const id = guildId($('gFind').value.trim());
+    try {
+      const d = await db.collection('guilds').doc(id).get();
+      if (!d.exists) { toast('No guild with this name.'); return; }
+      if (d.data().members.length >= 20) { toast('This guild is full.'); return; }
+      await db.collection('guilds').doc(id).update({ members: firebase.firestore.FieldValue.arrayUnion(uid) });
+      $('gFind').value = '';
+    } catch (e) { console.error(e); toast('Could not join (' + e.code + ').'); }
+  });
+  $('gLeave').addEventListener('click', async () => {
+    if (!myGuild) return;
+    const ref = db.collection('guilds').doc(myGuild.id);
+    try {
+      if (myGuild.members.length === 1) await ref.delete();
+      else await ref.update({ members: firebase.firestore.FieldValue.arrayRemove(uid) });
+    } catch (e) { console.error(e); toast('Could not leave (' + e.code + ').'); }
+  });
+  $('gChat').addEventListener('click', () => { if (myGuild) openChat('g_' + myGuild.id, myGuild.name); });
+  $('btnGuild').addEventListener('click', () => { renderGuild(); $('mdGuild').hidden = false; });
+  $('gClose').addEventListener('click', () => { $('mdGuild').hidden = true; });
 
   const run = {};
   function resetRun() {

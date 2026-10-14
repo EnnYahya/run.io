@@ -81,4 +81,5 @@ You asked for a Google Maps map. Google Maps needs an API key with a billing car
 - **Points:** each claim gives 1 point per 100 m² claimed, plus 1 point per 50 m² taken from other players.
 - **Leaderboard:** 🏆 now ranks players by points (area shown next to it).
 - **Re-publish the rules:** copy the new `firestore.rules` into Firebase → Firestore → Rules → Publish.
-- Chat and guilds are not built yet.
+- **Chat:** 💬 next to a friend opens a private chat.
+- **Guilds:** 🛡️ create a guild or join one by name (max 20). Guild chat, member points, and guild members' territories always show on your map.
