@@ -30,7 +30,7 @@
       gpsUnavailable: 'Position unavailable.',
       notConfigured: "Firebase isn't configured yet. Open config.js and paste your Firebase settings (see README).",
       sim: 'Simulation (test without moving)',
-      signInErr: 'Sign-in failed. Enable Anonymous sign-in in Firebase Authentication.',
+      signInErr: 'Sign-in failed. Enable Email/Password sign-in in Firebase Authentication.',
       dbErr: 'Database error. Check your Firestore rules.',
       confirmCancel: 'Cancel this run?',
       owner: 'Owner', area: 'Area',
@@ -59,7 +59,7 @@
       gpsUnavailable: 'Position indisponible.',
       notConfigured: "Firebase n'est pas configuré. Ouvre config.js et colle tes paramètres Firebase (voir README).",
       sim: 'Simulation (tester sans bouger)',
-      signInErr: "Connexion impossible. Active la connexion anonyme dans Firebase Authentication.",
+      signInErr: "Connexion impossible. Active la connexion Email/Mot de passe dans Firebase Authentication.",
       dbErr: 'Erreur de base de données. Vérifie les règles Firestore.',
       confirmCancel: 'Annuler cette course ?',
       owner: 'Propriétaire', area: 'Surface',
@@ -276,6 +276,7 @@
     auth = firebase.auth();
     db = firebase.firestore();
     auth.onAuthStateChanged((user) => {
+      if (user && user.isAnonymous) { auth.signOut(); return; }
       if (!user) { uid = null; $('mdAuth').hidden = false; return; }
       uid = user.uid;
       $('mdAuth').hidden = true;
